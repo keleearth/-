@@ -90,8 +90,59 @@ class Actuator(object):
         self.yearData = {}
         #词集字典，方便确认位置
         self.dataDict = {}
+        self.resultData = []
         #----找到数据中共有多少字段
         #self.dataSet = set(["DA"])
+    #输出统计结果
+    def stat(self,param):
+       self.statData()
+       statResultFile = "statResult.txt"
+       if(len(param) > 0):
+            statResultFile = param + "\\statResult.txt"
+       with open(statResultFile, "w", encoding='utf-8') as statFile:
+           statFile.write("word")
+           for key in self.yearDataKeys:
+               statFile.write("\t" + key)
+           statFile.write("\t总计")
+           statFile.write("\n")
+           for dataList in self.resultData:
+               for data in dataList:
+                   statFile.write(str(data) + "\t")
+               statFile.write("\n")
+    def statData(self):
+        self.readData()
+        self.produceVocabSet()
+        self.countYearWordNum()
+        keys = self.yearData.keys()
+        keys = list(keys)
+        keys.sort()
+        self.yearDataKeys = keys
+
+        for i in range(len(self.dataSet)):
+            dataList = [self.dataDict[i]]
+            num = 0
+            for key in keys:
+                dataList.append(self.yearData[key][i])
+                num = num + self.yearData[key][i]
+            dataList.append(num)
+            self.resultData.append(dataList)
+        
+    #实现替换文字
+    def replace(self,param):
+        #取出替换后文件位置
+        #取出要替换的文字
+        outputFileName = "replaceWordData.txt"
+        statResultFile = "statResult.txt"
+        if(len(param["outputFileName"]) > 0):
+            outputFileName = param["outputFileName"] + "\\replaceWordData.txt"
+        replaceWords = param["replaceWord"]
+        with open(outputFileName, "w", encoding='utf-8') as outputFile, open(self.dataLocation, 'r', encoding='utf-8') as dataFile:
+            
+           for line in dataFile.readlines():
+               for word in replaceWords:
+                   line = line.replace(word,replaceWords[word])
+               outputFile.write(line)
+        print(param)
     #对词集进行编码方便确定位置
     def __encodedDataSet(self):
         index = 0
@@ -173,115 +224,97 @@ class Actuator(object):
                 line = dataFile.readline()
         return dataStruct
         
-    #打印data数据，方便查看
-    def printData(self):
-        for data in self.data:
-            print(data)
-    #找到数量最多的单词
-    def searchTopWords(self,num):
-        #将各年度数据相加得到数量
-        totalNum = np.zeros(len(self.dataSet), int)
-        for yearData in self.yearData:
-            totalNum = totalNum + np.array(self.yearData[yearData])
-        wordList = []
-        #数组长度
-        length = len(totalNum)
-        #拿到数量前100的词汇集合
-        if length < num:
-            wordList =[]
-        else:    
-            wordListIndex = np.argpartition(totalNum, 0 - num)
-            for i in range(0,num):
-                wordList.append(self.dataDict[wordListIndex[length-1-i]])
+    # #找到数量最多的单词
+    # def searchTopWords(self,num):
+    #     #将各年度数据相加得到数量
+    #     totalNum = np.zeros(len(self.dataSet), int)
+    #     for yearData in self.yearData:
+    #         totalNum = totalNum + np.array(self.yearData[yearData])
+    #     wordList = []
+    #     #数组长度
+    #     length = len(totalNum)
+    #     #拿到数量前100的词汇集合
+    #     if length < num:
+    #         wordList =[]
+    #     else:    
+    #         wordListIndex = np.argpartition(totalNum, 0 - num)
+    #         for i in range(0,num):
+    #             wordList.append(self.dataDict[wordListIndex[length-1-i]])
 
-        #print(totalNum)
-        return wordList
+    #     #print(totalNum)
+    #     return wordList
 
-    #处理汇总后的数据数据
-    def dealData(self, wordList):
-        resultData = []
-        # columunDataName = ['year']
-        # columunDataName.extend(wordList)
-        # resultData.append(columunDataName)
-        for oneYearData in self.yearData:
-            dataList = self.__dealOneYearData(self.yearData[oneYearData],wordList)
-            dt = []
-            dt.append(oneYearData)
-            dt = dt+dataList 
-            resultData.append(dt)
-        self.resultData = resultData
-       # return resultData
+    # #处理汇总后的数据数据
+    # def dealData(self, wordList):
+    #     resultData = []
+    #     # columunDataName = ['year']
+    #     # columunDataName.extend(wordList)
+    #     # resultData.append(columunDataName)
+    #     for oneYearData in self.yearData:
+    #         dataList = self.__dealOneYearData(self.yearData[oneYearData],wordList)
+    #         dt = []
+    #         dt.append(oneYearData)
+    #         dt = dt+dataList 
+    #         resultData.append(dt)
+    #     self.resultData = resultData
+    #    # return resultData
 
-    def __dealOneYearData(self,oneYearData,wordList):
-        dataList = [] 
-        for word in wordList:
-            #print(self.dataDict[word])
-            index = self.dataDict[word]
-            #print(index)
-            dataList.append(oneYearData[index])
-        return dataList
+    # def __dealOneYearData(self,oneYearData,wordList):
+    #     dataList = [] 
+    #     for word in wordList:
+    #         #print(self.dataDict[word])
+    #         index = self.dataDict[word]
+    #         #print(index)
+    #         dataList.append(oneYearData[index])
+    #     return dataList
+    #根据num调整尺寸
+    def figsize(self,num):
+        figsize = (7.5,6.8)
+        if(num > 50 and num < 70):
+            figsize = (7.5,7.8)
+        if(num >= 70):
+            figsize = (9,9.8)
+        return figsize
 
     #使用pandas对数据进行可视化
-    def showData(self,wordList):
-        columunDataName = ['year']
-        columunDataName.extend(wordList)
+    def showData(self,num):
+        columunDataName = ['word']
+        for key in self.yearDataKeys:
+            columunDataName.append(key)
+        columunDataName.append("total")
         dataFrame = pd.DataFrame(self.resultData, columns=columunDataName)
-        mpl.rcParams['font.sans-serif'] = ['KaiTi', 'SimHei',
-                                           'FangSong']  # 汉字字体,优先使用楷体，如果找不到楷体，则使用黑体
+        mpl.rcParams['font.sans-serif'] = ['SimHei','FangSong', 'KaiTi'
+                                           ]  # 汉字字体,优先使用楷体，如果找不到楷体，则使用黑体
         mpl.rcParams['font.size'] = 12  # 字体大小
         mpl.rcParams['axes.unicode_minus'] = False
-        dataFrame = dataFrame.sort_values(by='year', ascending=True)
-
-        dataFrame = dataFrame.set_index(['year'])
-        dataFrame = dataFrame.T
-        dataFrame = dataFrame.reset_index()
-        #画图
-        #绘制画布
-        fig, ax = plt.subplots()
-        ax.set_xlabel('年份',loc='right',labelpad= 5)
-        ax.set_yticklabels(dataFrame["index"])
-        ax.set_yticks(range(len(dataFrame["index"])))
+        dataFrame = dataFrame.sort_values(by="total",ascending=False)
+        
+        dataFrame = dataFrame.iloc[0:num,0:]
+        #开始画图
+        fig, ax = plt.subplots(figsize=self.figsize(num))
+        
+        ax.set_yticklabels(dataFrame["word"])
+        ax.set_yticks(range(len(dataFrame["word"])))
         ax.set_ylabel('单词')
+        ax.set_xlabel('年份', loc='right', labelpad=5)
         ax.set_xticklabels(dataFrame.columns.tolist()[1:-1])
         ax.set_xticks(range(len(dataFrame.columns.tolist()[1:-1 ])))
         #ax.grid(True)
         ax.tick_params(axis='x', rotation=70)
-        ax.pcolor(dataFrame.iloc[0:-1, 1: -1], edgecolors='k', linewidths=1)
+        ax.tick_params(axis='y', rotation=10)
+        ax.pcolor(dataFrame.iloc[0:, 1: -1], edgecolors='k', linewidths=1)
         im = plt.imshow(dataFrame.iloc[0:-1, 1: -1])
         plt.colorbar(im)
         return fig
-        #print(dataFrame)
-        #plt.show()
-        #id 和py字段画图
+        # plt.show()
 
-
-# if __name__ == '__main__':
-#     actuator = Actuator('E:\\project\\python\\data.txt')
-#     actuator.readData()
-#     # actuator.printData()
-#     # print(actuator.dataSet)
-#     # print(actuator.data[0])
-#     # dictData = actuator.data[0]
-#     actuator.produceVocabSet()
-#     actuator.countYearWordNum()
-#     wordList = actuator.searchTopWords(30)
-#     actuator.dealData(wordList)
-#     actuator.showData()
-#     #将data[0]输出到文件
-#     with open('data\\test.txt', 'w', encoding='utf-8') as testDoc:
-#         # for key in dictData:
-#         #     testDoc.write(key + '\t')
-#         #     testDoc.write(str(dictData[key]) + "\n")
-#         #testDoc.write(str(actuator.dataSet))
-#         # for dt in actuator.dataSet:
-#         #     testDoc.write(str(dt))
-#         for key in actuator.yearData:
-#             testDoc.write(str(key) + ":" + str(actuator.yearData[key]) + "\n")
-#         for key in actuator.dataDict:
-#             testDoc.write(str(key) + ":" + str(actuator.dataDict[key]) + "\n")
-#         testDoc.write(str(wordList) + "\n")
-#         for dd in actuator.resultData:
-#             testDoc.write(str(dd)+"\n")
-    #actuator.showData()
+if __name__ == '__main__':
+    actuator = Actuator('E:\\project\\python\\data.txt')
+    actuator.statData()
+    
+    # actuator.showData(30)
+    # actuator.showData(50)
+    actuator.showData(100)
+   
 
     # print("aa")
